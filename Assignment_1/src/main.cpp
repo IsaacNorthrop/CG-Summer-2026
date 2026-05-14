@@ -5,6 +5,7 @@
 #include <iostream>
 #include <numeric>
 #include <vector>
+#include <string>
 
 #include <Eigen/Dense>
 // Shortcut to avoid  everywhere, DO NOT USE IN .h
@@ -31,11 +32,13 @@ bool intersect_segment(const Vector2d &a, const Vector2d &b, const Vector2d &c, 
 
 bool is_inside(const std::vector<Vector2d> &poly, const Vector2d &query)
 {
-    // 1. Compute bounding box and set coordinate of a point outside the polygon
-    // TODO
-    Vector2d outside(0, 0);
-    // 2. Cast a ray from the query point to the 'outside' point, count number of intersections
-    // TODO
+    std::float max_x, max_y;
+    max_x = max_y = std::numeric_limits<float>::lowest();
+    for (const Vector2d &p : poly)    {
+        max_x = std::max(max_x, p.x());
+        max_y = std::max(max_y, p.y());
+    }
+    Vector2d far_point(max_x + 1, max_y + 1);
     return true;
 }
 
@@ -43,15 +46,27 @@ bool is_inside(const std::vector<Vector2d> &poly, const Vector2d &query)
 
 std::vector<Vector2d> load_xyz(const std::string &filename)
 {
-    std::vector<Vector2d> points;
     std::ifstream in(filename);
-    // TODO
+    std::string line;
+    std::getline(in, line, '\n');
+    int num_points = std::stoi(line);
+    std::vector<Vector2d> points;
+    double x, y, z; 
+    while (in >> x >> y >> z)
+    {
+        points.push_back(Vector2d(x, y));
+    }
     return points;
 }
 
 void save_xyz(const std::string &filename, const std::vector<Vector2d> &points)
 {
-    // TODO
+    std::ofstream out(root_path + "/" + filename);
+    out << points.size() << std::endl;
+    for(const Vector2d& p : points)
+    {
+        out << p.x() << " " << p.y() << " 0" << std::endl;
+    }
 }
 
 std::vector<Vector2d> load_obj(const std::string &filename)

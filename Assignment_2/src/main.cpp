@@ -62,9 +62,6 @@ void raytrace_sphere()
                 auto t2 = (-b + sqrt(discriminant)) / (2 * a);
                 auto t = std::min(t1, t2);
                 Vector3d ray_intersection = ray_origin + t * ray_direction;
-                // Vector3d ray_intersection(
-                //     ray_on_xy(0), ray_on_xy(1),
-                //     sqrt(sphere_radius * sphere_radius - ray_on_xy.squaredNorm()));
 
                 // Compute normal at the intersection point
                 Vector3d ray_normal = ray_intersection.normalized();

@@ -54,9 +54,17 @@ void raytrace_sphere()
             if (ray_on_xy.norm() < sphere_radius)
             {
                 // The ray hit the sphere, compute the exact intersection point
-                Vector3d ray_intersection(
-                    ray_on_xy(0), ray_on_xy(1),
-                    sqrt(sphere_radius * sphere_radius - ray_on_xy.squaredNorm()));
+                auto a = ray_direction.dot(ray_direction);
+                auto b = 2 * ray_direction.dot(ray_origin - sphere_center);
+                auto c = (ray_origin - sphere_center).dot(ray_origin - sphere_center) - sphere_radius * sphere_radius;
+                auto discriminant = b * b - 4 * a * c;
+                auto t1 = (-b - sqrt(discriminant)) / (2 * a);
+                auto t2 = (-b + sqrt(discriminant)) / (2 * a);
+                auto t = std::min(t1, t2);
+                Vector3d ray_intersection = ray_origin + t * ray_direction;
+                // Vector3d ray_intersection(
+                //     ray_on_xy(0), ray_on_xy(1),
+                //     sqrt(sphere_radius * sphere_radius - ray_on_xy.squaredNorm()));
 
                 // Compute normal at the intersection point
                 Vector3d ray_normal = ray_intersection.normalized();

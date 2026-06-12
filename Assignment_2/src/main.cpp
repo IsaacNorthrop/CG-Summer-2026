@@ -13,6 +13,8 @@
 // Shortcut to avoid Eigen:: everywhere, DO NOT USE IN .h
 using namespace Eigen;
 
+const float EPSILON = 1e-6f;
+
 void raytrace_sphere()
 {
     std::cout << "Simple ray tracer, one sphere with orthographic projection" << std::endl;
@@ -117,24 +119,47 @@ void raytrace_parallelogram()
             const Vector3d ray_direction = camera_view_direction;
 
             // TODO: Check if the ray intersects with the parallelogram
-            if (true)
-            {
-                // TODO: The ray hit the parallelogram, compute the exact intersection
-                // point
-                Vector3d ray_intersection(0, 0, 0);
+            // TODO: The ray hit the parallelogram, compute the exact intersection
+            // point
+            auto w = ray_origin - pgram_origin;
+            auto n = pgram_u.cross(pgram_v);
 
-                // TODO: Compute normal at the intersection point
-                Vector3d ray_normal = ray_intersection.normalized();
+            if(std::fabs(n.dot(ray_direction)) < EPSILON)
+                continue;
 
-                // Simple diffuse model
-                C(i, j) = (light_position - ray_intersection).normalized().transpose() * ray_normal;
+            auto distance_to_plane = n.dot(pgram_origin - ray_origin) / n.dot(ray_direction);
 
-                // Clamp to zero
-                C(i, j) = std::max(C(i, j), 0.);
+            if(distance_to_plane < 0)
+                continue;
 
-                // Disable the alpha mask for this pixel
-                A(i, j) = 1;
-            }
+            auto ray_intersection = ray_origin + distance_to_plane * ray_direction;
+
+            auto origin_to_intersection = ray_intersection - pgram_origin;
+
+            auto s = origin_to_intersection.dot(pgram_u) * pgram_v.dot(pgram_v) - origin_to_intersection.dot(pgram_v) * pgram_u.dot(pgram_v);
+            s /= pgram_u.dot(pgram_u) * pgram_v.dot(pgram_v) - pgram_u.dot(pgram_v) * pgram_u.dot(pgram_v);
+
+            if(s < 0 || s > 1)
+                continue;
+
+            auto t = origin_to_intersection.dot(pgram_v) * pgram_u.dot(pgram_u) - origin_to_intersection.dot(pgram_u) * pgram_u.dot(pgram_v);
+            t /= pgram_u.dot(pgram_u) * pgram_v.dot(pgram_v) - pgram_u.dot(pgram_v) * pgram_u.dot(pgram_v);
+            
+            if(t < 0 || t > 1)
+                continue;
+
+
+            // TODO: Compute normal at the intersection point
+            auto ray_normal = n.normalized();
+
+            // Simple diffuse model
+            C(i, j) = (light_position - ray_intersection).normalized().transpose() * ray_normal;
+
+            // Clamp to zero
+            C(i, j) = std::max(C(i, j), 0.);
+
+            // Disable the alpha mask for this pixel
+            A(i, j) = 1;
         }
     }
 

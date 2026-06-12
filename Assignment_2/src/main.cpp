@@ -305,8 +305,11 @@ void raytrace_shading()
                 Vector3d ray_normal = ray_intersection.normalized();
 
                 // TODO: Add shading parameter here
-                auto diffuse = diffuse_color * (std::max((light_position - ray_intersection).normalized().dot(ray_normal), 0.0));
-                auto specular = specular_color * pow(std::max((light_position - ray_intersection).normalized().dot(ray_normal), 0.0), specular_exponent);
+                auto L = (light_position - ray_intersection).normalized(); // light direction
+                auto diffuse = diffuse_color * (std::max(L.dot(ray_normal), 0.0));
+                auto V = -ray_direction.normalized(); // view direction
+                auto R = (2 * ray_normal.dot(L) * ray_normal - L).normalized(); // reflection
+                auto specular = specular_color * pow(std::max(R.dot(V), 0.0), specular_exponent);
 
                 // Combine shading + ambient
                 Vector3d pixel_color = ambient + diffuse + specular;

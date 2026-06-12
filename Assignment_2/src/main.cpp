@@ -252,7 +252,7 @@ void raytrace_shading()
     std::cout << "Simple ray tracer, one sphere with different shading" << std::endl;
 
     const std::string filename("shading.png");
-    MatrixXd C = MatrixXd::Zero(800, 800); // Store the color
+    Eigen::Matrix<Eigen::Vector3d, Eigen::Dynamic, Eigen::Dynamic> C(800, 800); // Store the color
     MatrixXd A = MatrixXd::Zero(800, 800); // Store the alpha mask
 
     const Vector3d camera_origin(0, 0, 3);
@@ -275,7 +275,7 @@ void raytrace_shading()
     // Single light source
     const Vector3d light_position(-1, 1, 1);
     const Vector3d light_intesity(1, 1, 1);
-    double ambient = 0.1;
+    const Vector3d ambient = 0.1 * Vector3d(1, 1, 1);
 
     for (unsigned i = 0; i < C.cols(); ++i)
     {
@@ -305,23 +305,28 @@ void raytrace_shading()
                 Vector3d ray_normal = ray_intersection.normalized();
 
                 // TODO: Add shading parameter here
-                auto diffuse = diffuse_color.mean() * (std::max((light_position - ray_intersection).normalized().dot(ray_normal), 0.0));
-                auto specular = specular_color.mean() * pow(std::max((light_position - ray_intersection).normalized().dot(ray_normal), 0.0), specular_exponent);
+                auto diffuse = diffuse_color * (std::max((light_position - ray_intersection).normalized().dot(ray_normal), 0.0));
+                auto specular = specular_color * pow(std::max((light_position - ray_intersection).normalized().dot(ray_normal), 0.0), specular_exponent);
 
-                // Simple diffuse model
-                C(i, j) = ambient + diffuse + specular;
+                // Combine shading + ambient
+                Vector3d pixel_color = ambient + diffuse + specular;
 
-                // Clamp to zero
-                C(i, j) = std::max(C(i, j), 0.);
+                // Clamp each channel to [0,1]
+                pixel_color = pixel_color.cwiseMax(0.0).cwiseMin(1.0);
 
-                // Disable the alpha mask for this pixel
-                A(i, j) = 1;
+                // Assign to color matrix
+                C(i, j) = pixel_color;
+
+                // Set alpha
+                A(i, j) = 1.0;
             }
         }
     }
 
     // Save to png
-    write_matrix_to_png(C, C, C, A, filename);
+    write_matrix_to_png(C.unaryExpr([](const Vector3d &v) { return v(0); }),
+        C.unaryExpr([](const Vector3d &v) { return v(1); }),
+        C.unaryExpr([](const Vector3d &v) { return v(2); }), A, filename);
 }
 
 int main()

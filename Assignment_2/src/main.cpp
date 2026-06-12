@@ -287,19 +287,26 @@ void raytrace_shading()
             const Vector3d ray_origin = pixel_center;
             const Vector3d ray_direction = camera_view_direction;
 
-            // Intersect with the sphere
-            // TODO: implement the generic ray sphere intersection
-            if (true)
-            {
-                // TODO: The ray hit the sphere, compute the exact intersection point
-                Vector3d ray_intersection(0, 0, 0);
+            Vector2d ray_on_xy(ray_origin(0), ray_origin(1));
 
-                // TODO: Compute normal at the intersection point
+            if (ray_on_xy.norm() < sphere_radius)
+            {
+                // The ray hit the sphere, compute the exact intersection point
+                auto a = ray_direction.dot(ray_direction);
+                auto b = 2 * ray_direction.dot(ray_origin - sphere_center);
+                auto c = (ray_origin - sphere_center).dot(ray_origin - sphere_center) - sphere_radius * sphere_radius;
+                auto discriminant = b * b - 4 * a * c;
+                auto t1 = (-b - sqrt(discriminant)) / (2 * a);
+                auto t2 = (-b + sqrt(discriminant)) / (2 * a);
+                auto t = std::min(t1, t2);
+                Vector3d ray_intersection = ray_origin + t * ray_direction;
+
+                // Compute normal at the intersection point
                 Vector3d ray_normal = ray_intersection.normalized();
 
                 // TODO: Add shading parameter here
-                const double diffuse = (light_position - ray_intersection).normalized().dot(ray_normal);
-                const double specular = (light_position - ray_intersection).normalized().dot(ray_normal);
+                auto diffuse = diffuse_color.mean() * (std::max((light_position - ray_intersection).normalized().dot(ray_normal), 0.0));
+                auto specular = specular_color.mean() * pow(std::max((light_position - ray_intersection).normalized().dot(ray_normal), 0.0), specular_exponent);
 
                 // Simple diffuse model
                 C(i, j) = ambient + diffuse + specular;

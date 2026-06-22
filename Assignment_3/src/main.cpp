@@ -465,6 +465,7 @@ void raytrace_scene()
     const Vector3d image_origin(-image_x, image_y, -image_z);
     const Vector3d x_displacement(2.0 / w * image_x, 0, 0);
     const Vector3d y_displacement(0, -2.0 / h * image_y, 0);
+    const int num_samples = 64;
 
     for (unsigned i = 0; i < w; ++i)
     {
@@ -472,6 +473,7 @@ void raytrace_scene()
         {
             // TODO: Implement depth of field
             const Vector3d pixel_center = image_origin + (i + 0.5) * x_displacement + (j + 0.5) * y_displacement;
+            Vector4d C(0,0,0,0);
 
             // Prepare the ray
             Vector3d ray_origin;
@@ -479,17 +481,31 @@ void raytrace_scene()
 
             if (is_perspective)
             {
-                ray_origin = camera_position;
-                ray_direction = (pixel_center - camera_position).normalized();
+                for (int s = 0; s < num_samples; ++s)
+                {
+                    // Random offset within the aperture disk
+                    double ox = ((double)rand() / RAND_MAX - 0.5) * camera_aperture;
+                    double oy = ((double)rand() / RAND_MAX - 0.5) * camera_aperture;
+
+                    // Jittered ray origin on the aperture
+                    Vector3d ray_origin = camera_position + Vector3d(ox, oy, 0);
+
+                    // All rays converge at the pixel center on the focal plane
+                    Vector3d ray_direction = (pixel_center - ray_origin).normalized();
+
+                    C += shoot_ray(ray_origin, ray_direction, max_bounce);
+                }
+                C /= num_samples;
             }
             else
             {
-                // Orthographic camera
-                ray_origin = camera_position + Vector3d(pixel_center[0], pixel_center[1], 0);
-                ray_direction = Vector3d(0, 0, -1);
+                // Orthographic unchanged
+                Vector3d ray_origin = camera_position + Vector3d(pixel_center[0], pixel_center[1], 0);
+                Vector3d ray_direction = Vector3d(0, 0, -1);
+                C = shoot_ray(ray_origin, ray_direction, max_bounce);
             }
 
-            const Vector4d C = shoot_ray(ray_origin, ray_direction, max_bounce);
+            C = shoot_ray(ray_origin, ray_direction, max_bounce);
             R(i, j) = C(0);
             G(i, j) = C(1);
             B(i, j) = C(2);

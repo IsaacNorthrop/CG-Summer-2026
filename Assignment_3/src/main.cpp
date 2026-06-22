@@ -32,6 +32,8 @@ const double camera_aperture = 0.05;
 //Maximum number of recursive calls
 const int max_bounce = 5;
 
+const float EPSILON = 1e-6f;
+
 // Objects
 std::vector<Vector3d> sphere_centers;
 std::vector<double> sphere_radii;
@@ -202,20 +204,25 @@ double ray_sphere_intersection(const Vector3d &ray_origin, const Vector3d &ray_d
 
     double t = -1;
 
-    if (false)
-    {
-        return -1;
-    }
-    else
-    {
-        //TODO set the correct intersection point, update p to the correct value
-        p = ray_origin;
-        N = ray_direction;
-
+    // The ray hit the sphere, compute the exact intersection point
+    auto a = ray_direction.dot(ray_direction);
+    auto b = 2 * ray_direction.dot(ray_origin - sphere_center);
+    auto c = (ray_origin - sphere_center).dot(ray_origin - sphere_center) - sphere_radius * sphere_radius;
+    auto discriminant = b * b - 4 * a * c;
+    if(discriminant < 0)
         return t;
-    }
-
-    return -1;
+    auto t1 = (-b - sqrt(discriminant)) / (2 * a);
+    auto t2 = (-b + sqrt(discriminant)) / (2 * a);
+    if (t1 > 0) 
+        t = t1;
+    else if (t2 > 0) 
+        t = t2;
+    else 
+        return t;
+    Vector3d ray_intersection = ray_origin + t * ray_direction;
+    p = ray_intersection;
+    N = (p - sphere_center).normalized();
+    return t;
 }
 
 //Compute the intersection between a ray and a paralleogram, return -1 if no intersection
@@ -230,16 +237,39 @@ double ray_parallelogram_intersection(const Vector3d &ray_origin, const Vector3d
     const Vector3d pgram_u = A - pgram_origin;
     const Vector3d pgram_v = B - pgram_origin;
 
-    if (false)
-    {
-        return -1;
-    }
+    double t = -1;
 
-    //TODO set the correct intersection point, update p and N to the correct values
-    p = ray_origin;
-    N = p.normalized();
+    auto w = ray_origin - pgram_origin;
+    auto n = pgram_u.cross(pgram_v);
 
-    return -1;
+    if(std::fabs(n.dot(ray_direction)) < EPSILON)
+        return t;
+
+    auto distance_to_plane = n.dot(pgram_origin - ray_origin) / n.dot(ray_direction);
+
+    if(distance_to_plane < 0)
+        return t;
+
+    auto ray_intersection = ray_origin + distance_to_plane * ray_direction;
+
+    auto origin_to_intersection = ray_intersection - pgram_origin;
+
+    auto s = origin_to_intersection.dot(pgram_u) * pgram_v.dot(pgram_v) - origin_to_intersection.dot(pgram_v) * pgram_u.dot(pgram_v);
+    s /= pgram_u.dot(pgram_u) * pgram_v.dot(pgram_v) - pgram_u.dot(pgram_v) * pgram_u.dot(pgram_v);
+
+    if(s < 0 || s > 1)
+        return t;
+
+    auto k = origin_to_intersection.dot(pgram_v) * pgram_u.dot(pgram_u) - origin_to_intersection.dot(pgram_u) * pgram_u.dot(pgram_v);
+    k /= pgram_u.dot(pgram_u) * pgram_v.dot(pgram_v) - pgram_u.dot(pgram_v) * pgram_u.dot(pgram_v);
+
+    if(k < 0 || k > 1)
+        return t;
+
+    p = ray_intersection;
+    N = n.normalized();
+
+    return distance_to_plane;
 }
 
 //Finds the closest intersecting object returns its index

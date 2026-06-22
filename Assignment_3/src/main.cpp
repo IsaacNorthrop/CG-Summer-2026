@@ -331,7 +331,17 @@ bool is_light_visible(const Vector3d &ray_origin, const Vector3d &ray_direction,
 {
     // TODO: Determine if the light is visible here
     // Use find_nearest_object
-    return true;
+    auto L = light_position - ray_origin;
+    double light_dist = L.norm();
+
+    Vector3d p, N;
+
+    if (find_nearest_object(ray_origin + EPSILON * ray_direction, ray_direction, p, N) == -1)
+        return true;
+
+    double hit_dist = (p - ray_origin).norm();
+
+    return hit_dist >= light_dist;
 }
 
 Vector4d shoot_ray(const Vector3d &ray_origin, const Vector3d &ray_direction, int max_bounce)
@@ -360,6 +370,8 @@ Vector4d shoot_ray(const Vector3d &ray_origin, const Vector3d &ray_direction, in
         const Vector3d Li = (light_position - p).normalized();
 
         // TODO: Shoot a shadow ray to determine if the light should affect the intersection point and call is_light_visible
+        if(!is_light_visible(p, (light_position-p).normalized(), light_position))
+            continue;
 
         Vector4d diff_color = obj_diffuse_color;
 
@@ -386,7 +398,10 @@ Vector4d shoot_ray(const Vector3d &ray_origin, const Vector3d &ray_direction, in
         const Vector4d diffuse = diff_color * std::max(Li.dot(N), 0.0);
 
         // Specular contribution, use obj_specular_color
-        const Vector4d specular(0, 0, 0, 0);
+
+        const Vector3d V = (camera_position - p).normalized();
+        const Vector3d h = (V + Li).normalized();
+        const Vector4d specular = obj_specular_color * std::pow(std::max(N.dot(h), 0.0), obj_specular_exponent);
 
         // Attenuate lights according to the squared distance to the lights
         const Vector3d D = light_position - p;

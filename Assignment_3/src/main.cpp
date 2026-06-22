@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <limits>
+#include <cmath>
 
 // Utilities for the Assignment
 #include "utils.h"
@@ -25,7 +26,7 @@ const std::string filename("raytrace.png");
 const double focal_length = 10;
 const double field_of_view = 0.7854; //45 degrees
 const double image_z = 5;
-const bool is_perspective = false;
+const bool is_perspective = true;
 const Vector3d camera_position(0, 0, 5);
 const double camera_aperture = 0.05;
 
@@ -431,8 +432,8 @@ void raytrace_scene()
     // The sensor grid is at a distance 'focal_length' from the camera center,
     // and covers an viewing angle given by 'field_of_view'.
     double aspect_ratio = double(w) / double(h);
-    double image_y = 1; //TODO: compute the correct pixels size
-    double image_x = 1; //TODO: compute the correct pixels size
+    double image_y = std::tan(field_of_view / 2) * focal_length;
+    double image_x = std::tan(field_of_view / 2) * focal_length * aspect_ratio;
 
     // The pixel grid through which we shoot rays is at a distance 'focal_length'
     const Vector3d image_origin(-image_x, image_y, -image_z);
@@ -452,7 +453,8 @@ void raytrace_scene()
 
             if (is_perspective)
             {
-                // TODO: Perspective camera
+                ray_origin = camera_position;
+                ray_direction = (pixel_center - camera_position).normalized();
             }
             else
             {

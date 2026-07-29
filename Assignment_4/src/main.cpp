@@ -50,7 +50,7 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 const std::string data_dir = DATA_DIR;
 const std::string filename("raytrace.png");
-const std::string mesh_filename(data_dir + "dragon.off");
+const std::string mesh_filename(data_dir + "bunny.off");
 
 //Camera settings
 const double focal_length = 2;
@@ -439,38 +439,47 @@ Vector4d shoot_ray(const Vector3d &ray_origin, const Vector3d &ray_direction)
         return Vector4d(0, 0, 0, 0);
     }
 
+    // Ensure normal faces the incoming ray (toward the camera)
+    if (N.dot(-ray_direction) < 0)
+        N = -N;
+
     // Ambient light contribution
     const Vector4d ambient_color = obj_ambient_color.array() * ambient_light.array();
 
-    // Punctual lights contribution (direct lighting)
+    // Direct lighting with shadows
     Vector4d lights_color(0, 0, 0, 0);
-    for (int i = 0; i < light_positions.size(); ++i)
+    for (int i = 0; i < (int)light_positions.size(); ++i)
     {
         const Vector3d &light_position = light_positions[i];
         const Vector4d &light_color = light_colors[i];
 
-        Vector4d diff_color = obj_diffuse_color;
+        Vector3d to_light = light_position - p;
+        double dist2 = to_light.squaredNorm();
+        Vector3d Li = to_light.normalized();
 
-        // Diffuse contribution
-        const Vector3d Li = (light_position - p).normalized();
-        const Vector4d diffuse = diff_color * std::max(Li.dot(N), 0.0);
+        // Shadow ray: offset origin to avoid self-intersection
+        Vector3d shadow_origin = p + 1e-6 * N;
+        Vector3d shadow_p, shadow_N;
+        bool occluded = find_nearest_object(shadow_origin, Li, shadow_p, shadow_N);
+        if (occluded && (shadow_p - p).squaredNorm() < dist2 - 1e-9)
+            continue; // light is occluded
 
-        // Specular contribution
-        const Vector3d Hi = (Li - ray_direction).normalized();
-        const Vector4d specular = obj_specular_color * std::pow(std::max(N.dot(Hi), 0.0), obj_specular_exponent);
-        // Vector3d specular(0, 0, 0);
+        // Diffuse
+        double diff = std::max(Li.dot(N), 0.0);
+        Vector4d diffuse = obj_diffuse_color * diff;
 
-        // Attenuate lights according to the squared distance to the lights
-        const Vector3d D = light_position - p;
-        lights_color += (diffuse + specular).cwiseProduct(light_color) / D.squaredNorm();
+        // Specular (Blinn-Phong half-vector)
+        Vector3d view_dir = (-ray_direction).normalized();
+        Vector3d H = (Li + view_dir).normalized();
+        double spec_k = std::pow(std::max(N.dot(H), 0.0), obj_specular_exponent);
+        Vector4d specular = obj_specular_color * spec_k;
+
+        lights_color += (diffuse + specular).cwiseProduct(light_color) / dist2;
     }
 
     // Rendering equation
     Vector4d C = ambient_color + lights_color;
-
-    //Set alpha to 1
-    C(3) = 1;
-
+    C(3) = 1; // opaque
     return C;
 }
 
